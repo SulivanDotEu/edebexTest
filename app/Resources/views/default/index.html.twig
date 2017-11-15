@@ -12,6 +12,12 @@
             <p>J'ai utilisé un package de gestion des heures d'ouverture (<a href='https://github.com/spatie/opening-hours'>https://github.com/spatie/opening-hours</a>), que j'ai étendu dans le fichier
             : <code>src/AppBundle/CustomOpeningHours</code></p>
             <p>J'ai utilisé le package <a href='https://github.com/u01jmg3/ics-parser'>https://github.com/u01jmg3/ics-parser</a> pour la lecture du calendrier</p>
+
+            <hr>
+            <p>
+                Input = <b>{{ input|date("d/m/Y H:i") }}</b><br>
+                Result = <b>{{ result|date("d/m/Y H:i") }}</b></br>
+            </p>
         </div>
     </div>
 {% endblock %}

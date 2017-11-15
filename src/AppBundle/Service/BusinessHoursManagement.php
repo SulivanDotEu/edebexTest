@@ -1,4 +1,5 @@
 <?php
+
 namespace AppBundle\Service;
 
 use Psr\Log\LoggerInterface;
@@ -12,92 +13,96 @@ class BusinessHoursManagement
 {
     private $logger;
 
-
-    public function __construct(LoggerInterface $logger, ContainerInterface $container)
+    public function __construct( LoggerInterface $logger, ContainerInterface $container )
     {
-      $this->container = $container;
-      $this->logger = $logger;
-      $this->opnHrs = CustomOpeningHours::create($this->_getOpeningHoursConfig());
+        $this->container = $container;
+        $this->logger = $logger;
+        $this->opnHrs = CustomOpeningHours::create( $this->_getOpeningHoursConfig() );
     }
 
-    protected function _getOpeningHoursConfig() : Array
+    protected function _getOpeningHoursConfig(): Array
     {
-      // Load business hours config
-      $config = Yaml::parse(file_get_contents($this->container->get('kernel')->getRootDir().'/config/openinghours.yml'));
-      $config['exceptions'] = $this->_getHolidaysConfig();
+        // Load business hours config
+        $config = Yaml::parse( file_get_contents( $this->container->get( 'kernel' )->getRootDir() . '/config/openinghours.yml' ) );
+        $config[ 'exceptions' ] = $this->_getHolidaysConfig();
 
-      return $config;
+        return $config;
     }
 
     protected function _getHolidaysConfig(): Array
     {
-        $ical = new ICal($this->container->get('kernel')->getRootDir().'/config/US_Holidays.ics', array(
+        $ical = new ICal( $this->container->get( 'kernel' )->getRootDir() . '/config/BEL.ics', [
             'defaultSpan'           => 2,     // Default value
             'defaultTimeZone'       => 'UTC',
             'defaultWeekStart'      => 'MO',  // Default value
-            'skipRecurrence'        => false, // Default value
-            'useTimeZoneWithRRules' => false, // Default value
-        ));
+            'skipRecurrence'        => FALSE, // Default value
+            'useTimeZoneWithRRules' => FALSE, // Default value
+        ] );
 
         $answer = [];
 
-        foreach($ical->events() as $event)
+        foreach ( $ical->events() as $event )
         {
-          $period = new \DatePeriod(
-            new \DateTime($event->dtstart),
-            new \DateInterval('P1D'),
-            new \DateTime($event->dtend)
-          );
-          foreach($period as $day)
-          {
-            $answer[$day->format('Y-m-d')] = [];
-          }
+            $period = new \DatePeriod(
+                new \DateTime( $event->dtstart ),
+                new \DateInterval( 'P1D' ),
+                new \DateTime( $event->dtend )
+            );
+            foreach ( $period as $day )
+            {
+                $answer[ $day->format( 'Y-m-d' ) ] = [];
+//                $this->logger->info( __METHOD__ . ': ' . $day->format( 'Y-m-d' ) );
+            }
         }
+
         return $answer;
     }
 
-
     /**
      * @param \DateTime $from  Initial datetime
-     * @param int $hours Number of hours to add
+     * @param int       $hours Number of hours to add
+     *
      * @return \DateTime
      */
-    public function addBusinessHours($from, $hours) : \DateTime
+    public function addBusinessHours( $from, $hours ): \DateTime
     {
-        $this->logger->debug('Starting addBusinessHours');
+        $this->logger->debug( 'Starting addBusinessHours' );
 
-        if(!$this->opnHrs->isOpenAt($from))
+        $from = clone $from;
+        if ( ! $this->opnHrs->isOpenAt( $from ) )
         {
-          throw new \RuntimeException('Datetime is not included in opened times');
+            $from = $this->opnHrs->nextOpen($from);
+//            throw new \RuntimeException( 'Datetime is not included in opened times' );
         }
 
         $tmpDateTime = $from;
-        $interval = new \DateInterval('PT' . $hours . 'H');
+        $interval = new \DateInterval( 'PT' . $hours . 'H' );
 
-        return $this->_addRange($tmpDateTime, $interval);
+        return $this->_addRange( $tmpDateTime, $interval );
     }
 
     /**
      * @param  DateTime     $dt    [description]
      * @param  DateInterval $range [description]
+     *
      * @return DateTime           [description]
      */
-    protected function _addRange(\DateTime $dt, \DateInterval $range) : \DateTime
+    protected function _addRange( \DateTime $dt, \DateInterval $range ): \DateTime
     {
-      $endOpen = $this->opnHrs->endOpen(clone $dt);
-      $tmp = clone $dt;
+        $endOpen = $this->opnHrs->endOpen( clone $dt );
+        $tmp = clone $dt;
 
-      if($tmp->add($range) < $endOpen) // Enought time
-      {
-        return $tmp;
-      }
-      else // Not enought
-      {
-        $nextOpen = $this->opnHrs->nextOpen(clone $dt);
-        $newInterval = $tmp->diff($endOpen, true);
+        if ( $tmp->add( $range ) < $endOpen ) // Enought time
+        {
+            return $tmp;
+        }
+        else // Not enought
+        {
+            $nextOpen = $this->opnHrs->nextOpen( clone $dt );
+            $newInterval = $tmp->diff( $endOpen, TRUE );
 
-        // self calling with next open datetime and interval reduced by the time spent in the current business time range
-        return $this->_addRange($nextOpen, $newInterval);
-      }
+            // self calling with next open datetime and interval reduced by the time spent in the current business time range
+            return $this->_addRange( $nextOpen, $newInterval );
+        }
     }
 }

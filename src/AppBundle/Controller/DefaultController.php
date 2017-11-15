@@ -16,12 +16,14 @@ class DefaultController extends Controller
     public function indexAction(Request $request, BusinessHoursManagement $serv)
     {
         $serv = $this->container->get('BusinessHoursManagement');
-        $d = new \DateTime('17-11-2017 11:00:00');
+        $d = new \DateTime('17-11-2017 15:15:00');
 
-        $serv->addBusinessHours($d, 4);
+        $result = $serv->addBusinessHours($d, 4);
 
         return $this->render('default/index.html.twig', [
             'base_dir' => realpath($this->getParameter('kernel.project_dir')).DIRECTORY_SEPARATOR,
+            'input' => $d,
+            'result' => $result,
         ]);
     }
 }
